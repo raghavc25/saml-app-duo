@@ -4,4 +4,7 @@ __pycache__/
 *.pyc
 certs/*.key
 certs/*.crt
+certs/*.pem
+certs/*.csr
+certs/*.cnf
 instance/
