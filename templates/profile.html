@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Profile</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 4rem auto; color: #1a1a1a; }
+    table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
+    th, td { border: 1px solid #ddd; padding: 0.5rem; text-align: left; vertical-align: top; }
+    th { background: #f7f7f7; }
+  </style>
+</head>
+<body>
+  <h1>Profile</h1>
+  <p>NameID: <strong>{{ name_id }}</strong></p>
+
+  <h2>Attributes released by Duo</h2>
+  {% if attributes %}
+  <table>
+    <tr><th>Attribute</th><th>Value(s)</th></tr>
+    {% for key, values in attributes.items() %}
+    <tr><td>{{ key }}</td><td>{{ values|join(', ') }}</td></tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p>No attributes were released in the assertion.</p>
+  {% endif %}
+
+  <p><a href="{{ url_for('index') }}">Home</a> · <a href="{{ url_for('logout') }}">Log out</a></p>
+</body>
+</html>
