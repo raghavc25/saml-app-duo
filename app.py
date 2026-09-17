@@ -1,21 +1,37 @@
+import hmac
 import os
+from functools import wraps
 from urllib.parse import urlparse
 
 from dotenv import load_dotenv
-from flask import Flask, request, redirect, session, render_template, Response, url_for
-from onelogin.saml2.auth import OneLogin_Saml2_Auth
-from onelogin.saml2.settings import OneLogin_Saml2_Settings
+from flask import Flask, request, redirect, session, render_template, Response, url_for, flash
 
 load_dotenv()
 
+from onelogin.saml2.auth import OneLogin_Saml2_Auth  # noqa: E402
+from onelogin.saml2.settings import OneLogin_Saml2_Settings  # noqa: E402
+
+from config_store import FIELDS, get_config, save_config  # noqa: E402
 from saml_config import get_saml_settings  # noqa: E402  (needs load_dotenv() first)
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-secret-change-me")
 
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
+
 # Duo redirects the browser back over HTTPS in production; tell Flask to trust
 # that when it builds absolute URLs for the SAML request/response.
 app.config["PREFERRED_URL_SCHEME"] = "https" if os.environ.get("SP_HTTPS", "off") == "on" else "http"
+
+
+def admin_required(view):
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        if not session.get("is_admin"):
+            return redirect(url_for("admin_login", next=request.path))
+        return view(*args, **kwargs)
+
+    return wrapped
 
 
 def prepare_flask_request(flask_request):
@@ -131,6 +147,43 @@ def metadata():
     if errors:
         return Response("\n".join(errors), status=500, content_type="text/plain")
     return Response(metadata_xml, content_type="text/xml")
+
+
+@app.route("/admin/login", methods=["GET", "POST"])
+def admin_login():
+    error = None
+    if request.method == "POST":
+        password = request.form.get("password", "")
+        if ADMIN_PASSWORD and hmac.compare_digest(password, ADMIN_PASSWORD):
+            session["is_admin"] = True
+            return redirect(request.args.get("next") or url_for("admin_config"))
+        error = "Incorrect password"
+    return render_template("admin_login.html", error=error, configured=bool(ADMIN_PASSWORD))
+
+
+@app.route("/admin/logout")
+def admin_logout():
+    session.pop("is_admin", None)
+    return redirect(url_for("index"))
+
+
+@app.route("/admin", methods=["GET", "POST"])
+@admin_required
+def admin_config():
+    saved = False
+    if request.method == "POST":
+        values = {field: request.form.get(field, "") for field in FIELDS}
+        save_config(values)
+        saved = True
+        flash("Settings saved.", "success")
+
+    cfg = get_config()
+    return render_template(
+        "admin_config.html",
+        cfg=cfg,
+        saved=saved,
+        metadata_url=url_for("metadata", _external=True),
+    )
 
 
 if __name__ == "__main__":

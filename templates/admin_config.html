@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}SAML settings{% endblock %}
+{% block main_class %}wide{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Duo SAML settings</h1>
+  <p class="subtitle">These values drive the SP ⇄ Duo SAML connection. Changes take effect immediately, no restart needed.</p>
+
+  <form method="post">
+    <fieldset>
+      <legend>Service provider (this app)</legend>
+      <div class="field">
+        <label for="sp_entity_id">SP entity ID</label>
+        <input type="text" id="sp_entity_id" name="sp_entity_id" value="{{ cfg.sp_entity_id }}" required>
+        <div class="hint">Use this value as the Entity ID in Duo's Service Provider settings.</div>
+      </div>
+      <div class="field">
+        <label for="sp_acs_url">Assertion Consumer Service (ACS) URL</label>
+        <input type="url" id="sp_acs_url" name="sp_acs_url" value="{{ cfg.sp_acs_url }}" required>
+        <div class="hint">Must exactly match the ACS URL configured in Duo.</div>
+      </div>
+      <div class="field">
+        <label for="sp_sls_url">Single Logout URL</label>
+        <input type="url" id="sp_sls_url" name="sp_sls_url" value="{{ cfg.sp_sls_url }}" required>
+      </div>
+      <div class="field">
+        <label>SP metadata</label>
+        <code class="inline">{{ metadata_url }}</code>
+        <div class="hint">Give Duo this URL, or upload the XML it returns, when setting up the application.</div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Identity provider (Duo)</legend>
+      <div class="field">
+        <label for="idp_entity_id">IdP entity ID</label>
+        <input type="text" id="idp_entity_id" name="idp_entity_id" value="{{ cfg.idp_entity_id }}" placeholder="https://sso-xxxxxxxx.sso.duosecurity.com/saml2/sp/DIXXXXXXXXXXXXXXXXXX/metadata">
+      </div>
+      <div class="field">
+        <label for="idp_sso_url">Single Sign-On URL</label>
+        <input type="url" id="idp_sso_url" name="idp_sso_url" value="{{ cfg.idp_sso_url }}" placeholder="https://sso-xxxxxxxx.sso.duosecurity.com/saml2/sp/DIXXXXXXXXXXXXXXXXXX/sso">
+      </div>
+      <div class="field">
+        <label for="idp_sls_url">Single Logout URL</label>
+        <input type="url" id="idp_sls_url" name="idp_sls_url" value="{{ cfg.idp_sls_url }}" placeholder="https://sso-xxxxxxxx.sso.duosecurity.com/saml2/sp/DIXXXXXXXXXXXXXXXXXX/slo">
+      </div>
+      <div class="field">
+        <label for="idp_x509_cert">Certificate</label>
+        <textarea id="idp_x509_cert" name="idp_x509_cert" placeholder="-----BEGIN CERTIFICATE-----&#10;...&#10;-----END CERTIFICATE-----">{{ cfg.idp_x509_cert }}</textarea>
+        <div class="hint">Paste it with or without the BEGIN/END lines &mdash; both work. Find it under the application's Metadata section in the Duo Admin Panel.</div>
+      </div>
+    </fieldset>
+
+    <div class="actions">
+      <button class="btn" type="submit">Save settings</button>
+      <a class="muted-link" href="{{ url_for('admin_logout') }}">Log out</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

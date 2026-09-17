@@ -1,31 +1,24 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>Profile</title>
-  <style>
-    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 4rem auto; color: #1a1a1a; }
-    table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
-    th, td { border: 1px solid #ddd; padding: 0.5rem; text-align: left; vertical-align: top; }
-    th { background: #f7f7f7; }
-  </style>
-</head>
-<body>
+{% extends "base.html" %}
+{% block title %}Profile{% endblock %}
+{% block content %}
+<div class="card">
   <h1>Profile</h1>
-  <p>NameID: <strong>{{ name_id }}</strong></p>
+  <p class="subtitle">NameID: <strong>{{ name_id }}</strong></p>
 
   <h2>Attributes released by Duo</h2>
   {% if attributes %}
-  <table>
-    <tr><th>Attribute</th><th>Value(s)</th></tr>
+  <table class="attrs">
     {% for key, values in attributes.items() %}
-    <tr><td>{{ key }}</td><td>{{ values|join(', ') }}</td></tr>
+    <tr><th>{{ key }}</th><td>{{ values|join(', ') }}</td></tr>
     {% endfor %}
   </table>
   {% else %}
-  <p>No attributes were released in the assertion.</p>
+  <p class="muted-link">No attributes were released in the assertion.</p>
   {% endif %}
 
-  <p><a href="{{ url_for('index') }}">Home</a> · <a href="{{ url_for('logout') }}">Log out</a></p>
-</body>
-</html>
+  <div class="actions">
+    <a class="btn secondary" href="{{ url_for('index') }}">Home</a>
+    <a class="btn secondary" href="{{ url_for('logout') }}">Log out</a>
+  </div>
+</div>
+{% endblock %}

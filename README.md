@@ -1,11 +1,19 @@
 # SAML SP demo (Flask + python3-saml) — Duo integration
 
-A minimal SAML 2.0 Service Provider you can point Duo's **Generic Service
-Provider** application at, to test SSO end to end.
+A SAML 2.0 Service Provider with a small web UI, built to point Duo's
+**Generic Service Provider** application at and test SSO end to end.
+
+- `/` and `/profile` — the login/profile pages an end user sees.
+- `/admin` — a password-protected page for entering the Duo IdP connection
+  details (entity ID, SSO/SLO URLs, certificate) through a form instead of
+  hand-editing files. Settings save to `instance/saml_settings.json` and
+  apply immediately, no restart needed.
 
 ## 1. Install
 
-Needs `libxml2` and `xmlsec1` dev headers for `python3-saml`'s XML signing:
+Needs `libxml2` and `xmlsec1` dev headers for `python3-saml`'s XML signing
+(prebuilt wheels usually cover this, but if `pip install` fails to build
+`xmlsec`, install these first):
 
 ```bash
 sudo apt-get install -y libxml2-dev libxmlsec1-dev pkg-config   # Debian/Ubuntu
@@ -17,28 +25,8 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-## 2. Set up the Duo side first
-
-1. In the Duo Admin Panel: **Applications > Protect an Application**, search
-   for **Generic Service Provider** and click **Protect**.
-2. Duo shows you IdP values you'll need — copy them into `.env`:
-   - **Entity ID** → `IDP_ENTITY_ID`
-   - **Single Sign-On URL** → `IDP_SSO_URL`
-   - **Single Logout URL** (if shown) → `IDP_SLS_URL`
-   - **Certificate** → download it and point `IDP_CERT_FILE` at the file
-     (or paste its base64 body into `IDP_X509_CERT`).
-3. Leave the Duo application's own **Service provider** fields open for now —
-   you'll fill those in from this app's metadata in the next step.
-
-## 3. Configure this app
-
-Edit `.env`:
-
-- `SP_ENTITY_ID` — any unique URI; the default (`.../saml/metadata`) is fine.
-- `SP_ACS_URL` — where this app receives the SAML response, e.g.
-  `http://localhost:5000/saml/acs`.
-- `SP_SLS_URL` — where this app receives logout messages, e.g.
-  `http://localhost:5000/saml/sls`.
+Edit `.env` and set `ADMIN_PASSWORD` (and `FLASK_SECRET_KEY`) to something
+real — `ADMIN_PASSWORD` is what unlocks `/admin`.
 
 Run it:
 
@@ -47,21 +35,44 @@ flask --app app run --port 5000
 # or: python app.py
 ```
 
+## 2. Set up the Duo side
+
+1. In the Duo Admin Panel: **Applications > Protect an Application**, search
+   for **Generic Service Provider** and click **Protect**.
+2. Duo shows you IdP values — you'll paste these into this app's `/admin`
+   page in the next step:
+   - **Entity ID**
+   - **Single Sign-On URL**
+   - **Single Logout URL** (if shown)
+   - **Certificate** (download it, or copy its contents)
+3. Leave the Duo application's own **Service provider** fields open for now.
+
+## 3. Configure this app via `/admin`
+
+Go to `http://localhost:5000/admin`, log in with `ADMIN_PASSWORD`, and fill
+in the **Identity provider (Duo)** fields from step 2. The certificate box
+accepts the value with or without `-----BEGIN CERTIFICATE-----` lines.
+
+The **Service provider** fields are pre-filled for local use
+(`http://localhost:5000/...`) — adjust them if you're running on a different
+host. Click **Save settings**.
+
 ## 4. Finish the Duo side with this app's metadata
 
-Visit `http://localhost:5000/saml/metadata` (or `curl` it) and use the values
-to fill in Duo's **Service Provider** section for the application:
+The admin page shows this app's metadata URL
+(`http://localhost:5000/saml/metadata`). Use it to fill in Duo's **Service
+Provider** section for the application:
 
-- **Entity ID** ← this app's `SP_ENTITY_ID`
-- **Assertion Consumer Service (ACS) URL** ← this app's `SP_ACS_URL`
-- **Single Logout URL** ← this app's `SP_SLS_URL` (if Duo's app supports SLO)
+- **Entity ID** ← this app's SP entity ID
+- **Assertion Consumer Service (ACS) URL** ← this app's ACS URL
+- **Single Logout URL** ← this app's SLS URL (if Duo's app supports SLO)
 
 Some Duo application types let you upload the metadata XML directly instead
 of copy-pasting fields — either works.
 
 Under the application's **Attributes** / **Permitted attributes** section,
 enable at least a NameID/username claim so the app has something to display
-after login (see `templates/profile.html`).
+after login.
 
 Assign the Duo policy/groups you want to be able to use this app, then click
 **Save**.
@@ -82,6 +93,10 @@ Assign the Duo policy/groups you want to be able to use this app, then click
   end in production.
 - Signing AuthnRequests from the SP side is optional and off by default; run
   `./generate_sp_cert.sh` and set `SP_CERT_FILE`/`SP_KEY_FILE` in `.env` if
-  you want it.
+  you want it (this part stays file-based, not in `/admin`).
+- `instance/saml_settings.json` holds the live Duo config (including the IdP
+  certificate) — it's gitignored; don't commit it.
 - Session storage here is Flask's signed cookie session, fine for a demo;
-  swap in server-side sessions for anything real.
+  swap in server-side sessions for anything real. Likewise, `/admin` uses a
+  single shared password in a cookie session — fine for a demo, not for
+  production multi-admin use.

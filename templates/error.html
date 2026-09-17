@@ -1,19 +1,14 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>SAML error</title>
-  <style>
-    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 4rem auto; color: #1a1a1a; }
-    .box { background: #fdecea; border: 1px solid #f5c2c0; padding: 1rem; border-radius: 6px; }
-  </style>
-</head>
-<body>
+{% extends "base.html" %}
+{% block title %}SAML error{% endblock %}
+{% block content %}
+<div class="card">
   <h1>SAML login failed</h1>
-  <div class="box">
-    <p><strong>Errors:</strong> {{ errors|join(', ') }}</p>
-    {% if reason %}<p><strong>Reason:</strong> {{ reason }}</p>{% endif %}
+  <div class="alert error">
+    <strong>Errors:</strong> {{ errors|join(', ') }}
+    {% if reason %}<br><strong>Reason:</strong> {{ reason }}{% endif %}
   </div>
-  <p><a href="{{ url_for('index') }}">Back home</a></p>
-</body>
-</html>
+  <div class="actions">
+    <a class="btn secondary" href="{{ url_for('index') }}">Back home</a>
+  </div>
+</div>
+{% endblock %}

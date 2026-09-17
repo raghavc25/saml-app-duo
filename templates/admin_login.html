@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Admin login{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Admin login</h1>
+  <p class="subtitle">Sign in to manage the Duo SAML connection.</p>
+
+  {% if not configured %}
+  <div class="alert error">No <code class="inline">ADMIN_PASSWORD</code> is set in <code class="inline">.env</code>, so the admin area is locked. Set one and restart the app.</div>
+  {% endif %}
+  {% if error %}
+  <div class="alert error">{{ error }}</div>
+  {% endif %}
+
+  <form method="post">
+    <div class="field">
+      <label for="password">Admin password</label>
+      <input type="password" id="password" name="password" autofocus required {{ 'disabled' if not configured }}>
+    </div>
+    <button class="btn" type="submit" {{ 'disabled' if not configured }}>Log in</button>
+  </form>
+</div>
+{% endblock %}
