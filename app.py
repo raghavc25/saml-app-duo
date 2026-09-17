@@ -60,7 +60,7 @@ def index():
 @app.route("/login")
 def login():
     auth = init_saml_auth(request)
-    return redirect(auth.login())
+    return redirect(auth.login(return_to=url_for("index", _external=True)))
 
 
 @app.route("/saml/acs", methods=["POST"])
@@ -187,8 +187,13 @@ def admin_config():
 
 
 if __name__ == "__main__":
+    https_cert = os.environ.get("HTTPS_CERT_FILE", "")
+    https_key = os.environ.get("HTTPS_KEY_FILE", "")
+    ssl_context = (https_cert, https_key) if https_cert and https_key else None
+
     app.run(
         host=os.environ.get("FLASK_RUN_HOST", "127.0.0.1"),
         port=int(os.environ.get("FLASK_RUN_PORT", 5000)),
         debug=os.environ.get("FLASK_DEBUG", "false").lower() == "true",
+        ssl_context=ssl_context,
     )

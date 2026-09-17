@@ -1,22 +1,29 @@
 {% extends "base.html" %}
 {% block title %}SAML SP Demo{% endblock %}
 {% block content %}
-<div class="card">
+<div class="card center">
+  <div class="app-icon">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M12 3l7 2.8v5c0 4.6-3 8.7-7 10.2-4-1.5-7-5.6-7-10.2v-5L12 3z" fill="white"/></svg>
+  </div>
+
   {% if name_id %}
+    <div class="status-badge"><span class="dot"></span> Signed in via Duo</div>
     <h1>Welcome back</h1>
-    <p class="subtitle">Signed in as <strong>{{ name_id }}</strong> via Duo SAML SSO.</p>
-    <div class="actions">
+    <p class="subtitle">You're signed in as <strong>{{ name_id }}</strong>.</p>
+    <div class="actions center">
       <a class="btn" href="{{ url_for('profile') }}">View profile</a>
       <a class="btn secondary" href="{{ url_for('logout') }}">Log out</a>
     </div>
   {% else %}
     <h1>SAML SP demo</h1>
-    <p class="subtitle">This app is registered as a Duo &ldquo;Generic Service Provider&rdquo; application. Sign in below to test the SSO flow.</p>
-    <div class="actions">
-      <a class="btn" href="{{ url_for('login') }}">Log in with Duo</a>
-    </div>
+    <p class="subtitle">This app is registered as a Duo &ldquo;Generic Service Provider&rdquo;. Sign in below to test the SSO flow end to end.</p>
+    <a class="btn block" href="{{ url_for('login') }}">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 3l7 2.8v5c0 4.6-3 8.7-7 10.2-4-1.5-7-5.6-7-10.2v-5L12 3z" fill="white" fill-opacity="0.9"/></svg>
+      Log in with Duo
+    </a>
   {% endif %}
 </div>
+
 <div class="card">
   <h2>SP metadata</h2>
   <p class="muted-link">Give this URL to Duo when configuring the application's Service Provider fields:</p>

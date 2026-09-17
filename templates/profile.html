@@ -2,18 +2,30 @@
 {% block title %}Profile{% endblock %}
 {% block content %}
 <div class="card">
+  <div class="status-badge"><span class="dot"></span> Authenticated</div>
   <h1>Profile</h1>
   <p class="subtitle">NameID: <strong>{{ name_id }}</strong></p>
 
+  <hr class="divider">
+
   <h2>Attributes released by Duo</h2>
   {% if attributes %}
-  <table class="attrs">
+  <div class="attr-list">
     {% for key, values in attributes.items() %}
-    <tr><th>{{ key }}</th><td>{{ values|join(', ') }}</td></tr>
+    <div class="attr-row">
+      <span class="attr-key">{{ key }}</span>
+      <span class="attr-value">{{ values|join(', ') }}</span>
+    </div>
     {% endfor %}
-  </table>
+  </div>
   {% else %}
-  <p class="muted-link">No attributes were released in the assertion.</p>
+  <div class="empty-hint">
+    No attributes were included in the SAML assertion &mdash; only the NameID above.
+    To have Duo release attributes (e.g. username, email, groups), open the
+    application in the Duo Admin Panel and configure its
+    <strong>Permitted attributes</strong> / attribute mapping section, then log
+    out and back in here.
+  </div>
   {% endif %}
 
   <div class="actions">

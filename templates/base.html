@@ -4,11 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}SAML + Duo{% endblock %}</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%232953ff'/%3E%3Cpath d='M12 5l6 2.4v4.2c0 4-2.6 6.9-6 8-3.4-1.1-6-4-6-8V7.4L12 5z' fill='white'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
   <nav class="topbar">
-    <a class="brand" href="{{ url_for('index') }}">SAML SP Demo</a>
+    <a class="brand" href="{{ url_for('index') }}">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="6" fill="#2953ff"/><path d="M12 5l6 2.4v4.2c0 4-2.6 6.9-6 8-3.4-1.1-6-4-6-8V7.4L12 5z" fill="white"/></svg>
+      SAML SP Demo
+    </a>
     <div class="links">
       <a href="{{ url_for('index') }}">Home</a>
       {% if session.get('samlNameId') %}<a href="{{ url_for('profile') }}">Profile</a>{% endif %}

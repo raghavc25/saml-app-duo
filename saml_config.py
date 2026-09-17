@@ -66,6 +66,10 @@ def get_saml_settings():
             "wantAssertionsSigned": True,
             "wantMessagesSigned": False,
             "wantNameId": True,
+            # Duo's Generic SP integration only sends NameID unless you've
+            # explicitly configured attribute release, so don't require an
+            # AttributeStatement to be present.
+            "wantAttributeStatement": False,
             "signMetadata": authn_requests_signed,
         },
     }

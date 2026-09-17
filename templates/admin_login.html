@@ -17,7 +17,7 @@
       <label for="password">Admin password</label>
       <input type="password" id="password" name="password" autofocus required {{ 'disabled' if not configured }}>
     </div>
-    <button class="btn" type="submit" {{ 'disabled' if not configured }}>Log in</button>
+    <button class="btn block" type="submit" {{ 'disabled' if not configured }}>Log in</button>
   </form>
 </div>
 {% endblock %}
