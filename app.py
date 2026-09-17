@@ -100,10 +100,21 @@ def profile():
 
 @app.route("/logout")
 def logout():
+    if "samlNameId" not in session:
+        return redirect(url_for("index"))
+
     auth = init_saml_auth(request)
     name_id = session.get("samlNameId")
     session_index = session.get("samlSessionIndex")
     name_id_format = session.get("samlNameIdFormat")
+
+    # Clear the local session immediately rather than waiting for Duo to
+    # redirect back to /saml/sls — some IdP configs don't complete that
+    # round trip, which would otherwise leave the user looking logged in.
+    session.pop("samlUserdata", None)
+    session.pop("samlNameId", None)
+    session.pop("samlNameIdFormat", None)
+    session.pop("samlSessionIndex", None)
 
     return redirect(
         auth.logout(
