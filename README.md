@@ -1,4 +1,4 @@
-# SAML SP demo (Flask + python3-saml) — Duo integration
+# saml-app-duo
 
 A SAML 2.0 Service Provider with a small web UI, built to point Duo's
 **Generic Service Provider** application at and test SSO end to end.
