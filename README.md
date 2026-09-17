@@ -25,17 +25,86 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Edit `.env` and set `ADMIN_PASSWORD` (and `FLASK_SECRET_KEY`) to something
-real — `ADMIN_PASSWORD` is what unlocks `/admin`.
+Edit `.env`:
 
-Run it:
+- `FLASK_SECRET_KEY` — set to a real random value (e.g. `python3 -c "import secrets; print(secrets.token_hex(32))"`). It signs session cookies, including the `/admin` login flag — don't leave it as the placeholder on anything network-reachable.
+- `ADMIN_PASSWORD` — what unlocks `/admin`.
+- `FLASK_RUN_HOST` — `127.0.0.1` for local-only access, `0.0.0.0` to accept connections from other hosts on your network.
+
+## 2. Point a hostname at this box (optional but recommended)
+
+If this app needs to be reachable by something other than `localhost` (e.g.
+Duo redirecting a real browser back to it), give it a proper FQDN rather than
+an IP:
+
+1. Add an A record for your chosen hostname (e.g. `app.example.com`) pointing
+   at this box's IP in your DNS server.
+2. Update the seed `SP_ENTITY_ID` / `SP_ACS_URL` / `SP_SLS_URL` in `.env`
+   (or later via `/admin`) to use that hostname instead of `localhost`.
+3. Confirm it resolves from wherever you'll actually browse from — not just
+   from this box, since it may use a different DNS server.
+
+## 3. TLS (recommended for anything beyond a quick local test)
+
+The app can serve HTTPS directly, no reverse proxy required:
+
+1. Generate a key + CSR:
+   ```bash
+   cd certs
+   openssl req -new -newkey rsa:2048 -nodes \
+     -keyout https_key.pem -out https.csr \
+     -subj "/CN=app.example.com" \
+     -addext "subjectAltName=DNS:app.example.com"
+   ```
+2. Get `https.csr` signed by your CA. If it comes back as a PKCS#7 bundle
+   (common from Microsoft AD CS — still starts with `-----BEGIN
+   CERTIFICATE-----` but decodes as PKCS#7), split it into individual certs
+   first: `openssl pkcs7 -in received.p7b -print_certs -out certs.pem`, then
+   concatenate leaf + any intermediate/root into one file (leaf first).
+3. Save that combined file as `certs/https_cert.pem`.
+4. In `.env`, set:
+   ```
+   SP_HTTPS=on
+   HTTPS_CERT_FILE=/absolute/path/to/certs/https_cert.pem
+   HTTPS_KEY_FILE=/absolute/path/to/certs/https_key.pem
+   ```
+5. Update `SP_ENTITY_ID` / `SP_ACS_URL` / `SP_SLS_URL` to `https://...` (in
+   `.env` if not yet saved via `/admin`, or directly in `/admin` otherwise).
+
+`certs/*.key`, `*.pem`, `*.csr` and `*.cnf` are gitignored — the private key
+never gets committed.
+
+If you skip this, `SP_HTTPS` stays `off` and the app runs plain HTTP — fine
+for a quick localhost test, not for anything Duo will actually redirect a
+real user's browser to.
+
+## 4. Run it persistently (systemd)
+
+For anything longer-lived than a one-off test, run it as a service instead of
+a foreground/background shell process — it'll survive logout and reboot, and
+restart itself if it crashes:
+
+```bash
+sudo cp saml-duo-app.service /etc/systemd/system/saml-duo-app.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now saml-duo-app
+sudo systemctl status saml-duo-app
+```
+
+`saml-duo-app.service` assumes the app lives at `/home/cisco/saml-duo-app`
+and runs as user `cisco` — edit the unit file first if either differs.
+
+Logs: `journalctl -u saml-duo-app -f`
+Restart after config changes: `sudo systemctl restart saml-duo-app`
+
+For quick manual testing instead, you can still run it directly:
 
 ```bash
 flask --app app run --port 5000
 # or: python app.py
 ```
 
-## 2. Set up the Duo side
+## 5. Set up the Duo side
 
 1. In the Duo Admin Panel: **Applications > Protect an Application**, search
    for **Generic Service Provider** and click **Protect**.
@@ -47,56 +116,62 @@ flask --app app run --port 5000
    - **Certificate** (download it, or copy its contents)
 3. Leave the Duo application's own **Service provider** fields open for now.
 
-## 3. Configure this app via `/admin`
+## 6. Configure this app via `/admin`
 
-Go to `http://localhost:5000/admin`, log in with `ADMIN_PASSWORD`, and fill
-in the **Identity provider (Duo)** fields from step 2. The certificate box
-accepts the value with or without `-----BEGIN CERTIFICATE-----` lines.
+Go to `https://<your-host>:5000/admin` (or `http://` if you skipped TLS), log
+in with `ADMIN_PASSWORD`, and fill in the **Identity provider (Duo)** fields
+from step 5. The certificate box accepts the value with or without
+`-----BEGIN CERTIFICATE-----` lines.
 
-The **Service provider** fields are pre-filled for local use
-(`http://localhost:5000/...`) — adjust them if you're running on a different
-host. Click **Save settings**.
+The **Service provider** fields are pre-filled from `.env` — adjust them if
+your hostname, port, or scheme changed since. Click **Save settings**.
 
-## 4. Finish the Duo side with this app's metadata
+## 7. Finish the Duo side with this app's metadata
 
-The admin page shows this app's metadata URL
-(`http://localhost:5000/saml/metadata`). Use it to fill in Duo's **Service
-Provider** section for the application:
+The admin page shows this app's metadata URL. Use it to fill in Duo's
+**Service Provider** section for the application:
 
 - **Entity ID** ← this app's SP entity ID
 - **Assertion Consumer Service (ACS) URL** ← this app's ACS URL
 - **Single Logout URL** ← this app's SLS URL (if Duo's app supports SLO)
 
 Some Duo application types let you upload the metadata XML directly instead
-of copy-pasting fields — either works.
+of copy-pasting fields — either works. **If you change the SP entity ID / ACS
+URL / SLS URL later (e.g. moving from HTTP to HTTPS), you must update these
+fields in Duo too** — a mismatch here is a common cause of login failures.
 
-Under the application's **Attributes** / **Permitted attributes** section,
-enable at least a NameID/username claim so the app has something to display
-after login.
+Under the application's **Permitted attributes** section, enable whichever
+attributes you want released (username, email, groups, etc.). If none are
+enabled, Duo's assertion carries only the NameID — the app handles that fine
+and just shows an empty-state hint on `/profile`; it does not require an
+`AttributeStatement` to be present.
 
 Assign the Duo policy/groups you want to be able to use this app, then click
 **Save**.
 
-## 5. Test it
+## 8. Test it
 
-1. Go to `http://localhost:5000/` and click **Log in with Duo**.
+1. Go to your app's URL and click **Log in with Duo**.
 2. You're redirected to Duo, complete primary auth + 2FA.
 3. Duo POSTs a SAML Response back to `/saml/acs`; on success you land on
    `/profile` showing the NameID and any released attributes.
-4. **Log out** triggers SP-initiated SLO back through Duo.
+4. **Log out** clears your local session immediately and also sends a
+   best-effort SAML LogoutRequest to Duo — if Duo's SLO isn't configured or
+   doesn't redirect back, you're still logged out of this app either way.
 
 ## Notes
 
-- `SP_HTTPS=off` is only for local testing. Set it to `on` and serve over
-  real HTTPS before pointing this at anything but a Duo sandbox — Duo signs
-  responses but the browser round-trip should still be TLS-protected end to
-  end in production.
 - Signing AuthnRequests from the SP side is optional and off by default; run
   `./generate_sp_cert.sh` and set `SP_CERT_FILE`/`SP_KEY_FILE` in `.env` if
-  you want it (this part stays file-based, not in `/admin`).
+  you want it (this part stays file-based, not in `/admin`, and is unrelated
+  to the HTTPS cert/key above).
 - `instance/saml_settings.json` holds the live Duo config (including the IdP
   certificate) — it's gitignored; don't commit it.
 - Session storage here is Flask's signed cookie session, fine for a demo;
   swap in server-side sessions for anything real. Likewise, `/admin` uses a
   single shared password in a cookie session — fine for a demo, not for
   production multi-admin use.
+- The dev server (`flask run` / `python app.py`, including under systemd
+  here) is single-threaded and not hardened for production traffic — fine
+  for a lab/demo integration, swap in a real WSGI server (gunicorn, uwsgi)
+  behind it for anything more serious.
