@@ -7,4 +7,5 @@ certs/*.crt
 certs/*.pem
 certs/*.csr
 certs/*.cnf
+certs/*.p7b
 instance/

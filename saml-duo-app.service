@@ -5,9 +5,9 @@ After=network.target
 [Service]
 Type=simple
 User=cisco
-WorkingDirectory=/home/cisco/saml-duo-app
-Environment=PATH=/home/cisco/saml-duo-app/venv/bin
-ExecStart=/home/cisco/saml-duo-app/venv/bin/python3 /home/cisco/saml-duo-app/app.py
+WorkingDirectory=/home/cisco/saml-app-duo
+Environment=PATH=/home/cisco/saml-app-duo/venv/bin
+ExecStart=/home/cisco/saml-app-duo/venv/bin/python3 /home/cisco/saml-app-duo/app.py
 Restart=on-failure
 RestartSec=3
 
