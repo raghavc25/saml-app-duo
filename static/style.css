@@ -169,6 +169,7 @@ p.subtitle { color: var(--text-muted); margin-top: 0; font-size: 0.93rem; line-h
 .field input[type="text"],
 .field input[type="url"],
 .field input[type="password"],
+.field input[type="number"],
 .field textarea {
   width: 100%;
   padding: 0.6rem 0.75rem;

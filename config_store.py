@@ -14,7 +14,10 @@ FIELDS = [
     "idp_sso_url",
     "idp_sls_url",
     "idp_x509_cert",
+    "session_lifetime_minutes",
 ]
+
+DEFAULT_SESSION_LIFETIME_MINUTES = 480
 
 _lock = threading.Lock()
 
@@ -29,6 +32,9 @@ def _defaults():
         "idp_sso_url": os.environ.get("IDP_SSO_URL", ""),
         "idp_sls_url": os.environ.get("IDP_SLS_URL", ""),
         "idp_x509_cert": os.environ.get("IDP_X509_CERT", ""),
+        "session_lifetime_minutes": os.environ.get(
+            "SESSION_LIFETIME_MINUTES", str(DEFAULT_SESSION_LIFETIME_MINUTES)
+        ),
     }
 
 
@@ -44,6 +50,16 @@ def _get_config_locked():
 def get_config():
     with _lock:
         return _get_config_locked()
+
+
+def get_session_lifetime_minutes():
+    """Saved SSO session lifetime, falling back to the default if it's
+    missing or not a positive whole number."""
+    try:
+        minutes = int(get_config()["session_lifetime_minutes"])
+    except (TypeError, ValueError):
+        return DEFAULT_SESSION_LIFETIME_MINUTES
+    return minutes if minutes > 0 else DEFAULT_SESSION_LIFETIME_MINUTES
 
 
 def save_config(new_values):

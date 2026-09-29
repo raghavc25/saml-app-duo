@@ -51,6 +51,15 @@
       </div>
     </fieldset>
 
+    <fieldset>
+      <legend>SSO session</legend>
+      <div class="field">
+        <label for="session_lifetime_minutes">Session lifetime (minutes)</label>
+        <input type="number" id="session_lifetime_minutes" name="session_lifetime_minutes" value="{{ cfg.session_lifetime_minutes }}" min="1" step="1" required>
+        <div class="hint">How long a user stays logged in after a Duo login, including across browser restarts. Counts from login; when it runs out they're sent back through Duo. Applies to new logins &mdash; existing sessions keep the lifetime they started with, unless you shorten it, which ends older sessions sooner. 480 = 8 hours.</div>
+      </div>
+    </fieldset>
+
     <div class="actions">
       <button class="btn" type="submit">Save settings</button>
       <a class="muted-link" href="{{ url_for('admin_logout') }}">Log out</a>

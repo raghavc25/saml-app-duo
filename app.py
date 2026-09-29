@@ -1,17 +1,19 @@
 import hmac
 import os
+from datetime import timedelta
 from functools import wraps
 from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 from flask import Flask, request, redirect, session, render_template, Response, url_for, flash
+from flask.sessions import SecureCookieSessionInterface
 
 load_dotenv()
 
 from onelogin.saml2.auth import OneLogin_Saml2_Auth  # noqa: E402
 from onelogin.saml2.settings import OneLogin_Saml2_Settings  # noqa: E402
 
-from config_store import FIELDS, get_config, save_config  # noqa: E402
+from config_store import FIELDS, get_config, get_session_lifetime_minutes, save_config  # noqa: E402
 from saml_config import get_saml_settings  # noqa: E402  (needs load_dotenv() first)
 
 app = Flask(__name__)
@@ -22,6 +24,26 @@ ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
 # Duo redirects the browser back over HTTPS in production; tell Flask to trust
 # that when it builds absolute URLs for the SAML request/response.
 app.config["PREFERRED_URL_SCHEME"] = "https" if os.environ.get("SP_HTTPS", "off") == "on" else "http"
+
+# SSO sessions are persistent cookies that survive a browser restart. The
+# lifetime is set from /admin and counts from login (the cookie isn't
+# re-issued on every request), after which the user goes back through Duo.
+app.config["SESSION_COOKIE_SECURE"] = os.environ.get("SP_HTTPS", "off") == "on"
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_REFRESH_EACH_REQUEST"] = False
+
+
+class ConfigurableLifetimeSessionInterface(SecureCookieSessionInterface):
+    """Reads the lifetime from the saved config as each request's session is
+    loaded, so a change in /admin applies without a restart. Flask uses it
+    both for the cookie's expiry and to reject cookies older than that."""
+
+    def open_session(self, app, request):
+        app.permanent_session_lifetime = timedelta(minutes=get_session_lifetime_minutes())
+        return super().open_session(app, request)
+
+
+app.session_interface = ConfigurableLifetimeSessionInterface()
 
 
 def admin_required(view):
@@ -84,6 +106,7 @@ def acs():
     session["samlNameId"] = auth.get_nameid()
     session["samlNameIdFormat"] = auth.get_nameid_format()
     session["samlSessionIndex"] = auth.get_session_index()
+    session.permanent = True
 
     relay_state = request.form.get("RelayState")
     if relay_state and relay_state != request.url_root:
@@ -184,9 +207,13 @@ def admin_config():
     saved = False
     if request.method == "POST":
         values = {field: request.form.get(field, "") for field in FIELDS}
-        save_config(values)
-        saved = True
-        flash("Settings saved.", "success")
+        lifetime = values["session_lifetime_minutes"].strip()
+        if not lifetime.isdigit() or int(lifetime) < 1:
+            flash("Session lifetime must be a whole number of minutes, 1 or more.", "error")
+        else:
+            save_config(values)
+            saved = True
+            flash("Settings saved.", "success")
 
     cfg = get_config()
     return render_template(
