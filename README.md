@@ -5,8 +5,8 @@ A SAML 2.0 Service Provider with a small web UI, built to point Duo's
 
 - `/` and `/profile` — the login/profile pages an end user sees.
 - `/admin` — a password-protected page for entering the Duo IdP connection
-  details (entity ID, SSO/SLO URLs, certificate) through a form instead of
-  hand-editing files. Settings save to `instance/saml_settings.json` and
+  details (entity ID, SSO/SLO URLs, certificate) and the SSO session lifetime
+  through a form instead of hand-editing files. Settings save to `instance/saml_settings.json` and
   apply immediately, no restart needed.
 
 ## 1. Install
@@ -124,7 +124,29 @@ from step 5. The certificate box accepts the value with or without
 `-----BEGIN CERTIFICATE-----` lines.
 
 The **Service provider** fields are pre-filled from `.env` — adjust them if
-your hostname, port, or scheme changed since. Click **Save settings**.
+your hostname, port, or scheme changed since.
+
+Under **SSO session**, set **Session lifetime (minutes)** — how long a user
+stays logged in after a Duo login (default 480, i.e. 8 hours; seeded from
+`SESSION_LIFETIME_MINUTES` in `.env` on first run). Click **Save settings**.
+
+### How the SSO session works
+
+- After a successful Duo login the app sets a **persistent** session cookie
+  with an expiry, so the login survives closing and reopening the browser.
+- The lifetime counts from login — it isn't extended by activity. When it
+  runs out, the next page load sends the user back to `/login` and through
+  Duo again.
+- Expiry is enforced by the server as well as the browser: a cookie older
+  than the configured lifetime is rejected even if the browser still sends it.
+- Changing the lifetime applies without a restart. New logins get the new
+  value; shortening it also ends existing sessions early, while lengthening
+  it doesn't extend sessions already in progress.
+- With `SP_HTTPS=on` the cookie is marked `Secure`; it's always `HttpOnly`
+  and `SameSite=Lax`.
+- Duo keeps its own SSO session separately, so after the app's session
+  expires the user may get back in without a fresh 2FA prompt, depending on
+  your Duo policy.
 
 ## 7. Finish the Duo side with this app's metadata
 
@@ -155,7 +177,9 @@ Assign the Duo policy/groups you want to be able to use this app, then click
 2. You're redirected to Duo, complete primary auth + 2FA.
 3. Duo POSTs a SAML Response back to `/saml/acs`; on success you land on
    `/profile` showing the NameID and any released attributes.
-4. **Log out** clears your local session immediately and also sends a
+4. Close and reopen the browser and revisit `/profile` — you should still
+   be logged in until the session lifetime set in `/admin` runs out.
+5. **Log out** clears your local session immediately and also sends a
    best-effort SAML LogoutRequest to Duo — if Duo's SLO isn't configured or
    doesn't redirect back, you're still logged out of this app either way.
 
